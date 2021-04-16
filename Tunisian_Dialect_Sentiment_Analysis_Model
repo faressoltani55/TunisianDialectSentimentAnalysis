@@ -1,0 +1,2424 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.8.3"
+    },
+    "colab": {
+      "name": "Pipline ICompass Zindi.ipynb",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/faressoltani55/TunisianDialectSentimentAnalysis/blob/main/Tunisian_Dialect_Sentiment_Analysis_Model\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "fDui-j-upwfS"
+      },
+      "source": [
+        "import pandas as pd\n",
+        "import matplotlib.pyplot as plt\n",
+        "import numpy as np\n",
+        "import tensorflow as tf\n",
+        "from tensorflow import keras\n",
+        "from tensorflow.keras import layers"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "2s02YHh2pxiF"
+      },
+      "source": [
+        "!pip install -U -q PyDrive\n",
+        "from pydrive.auth import GoogleAuth\n",
+        "from pydrive.drive import GoogleDrive\n",
+        "from google.colab import auth\n",
+        "from oauth2client.client import GoogleCredentials"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "yZqQoi29pyI2"
+      },
+      "source": [
+        "auth.authenticate_user()\n",
+        "gauth = GoogleAuth()\n",
+        "gauth.credentials = GoogleCredentials.get_application_default()\n",
+        "drive = GoogleDrive(gauth)\n",
+        "#4/1AY0e-g78_yQ6WVxOlZHbWuqGdYx7p2M7dJ0lE3-zvnulX8d4Ge08dg8xakk"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "8Bd9cdZ-pyMK"
+      },
+      "source": [
+        "downloaded = drive.CreateFile({'id':'1ewAp60aj9AgC0PqPMBuYBwwVO9peaFTR'}) # replace the id with id of file you want to access\n",
+        "downloaded.GetContentFile('Train.csv')\n",
+        "downloaded = drive.CreateFile({'id':'1i5WfgpAlGYp33k3Pxwq3J02kJiPsilBZ'}) # replace the id with id of file you want to access\n",
+        "downloaded.GetContentFile('Test.csv')"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "z8_nbCPopwfY"
+      },
+      "source": [
+        "train_ds = pd.read_csv('Train.csv')\n",
+        "test_ds = pd.read_csv('Test.csv')"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "t6-RDHTJpwfZ",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "32b7ac51-f80e-4655-c523-a5fd322cd524"
+      },
+      "source": [
+        "print(train_ds.shape)\n",
+        "print(test_ds.shape)"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "(70000, 3)\n",
+            "(30000, 2)\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "6to8GnDipwfa",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "a31f9093-abb4-4e0d-b06d-063780302308"
+      },
+      "source": [
+        "print(train_ds.head())\n",
+        "print(test_ds.head())"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "        ID                                               text  label\n",
+            "0  13P0QT0  3sbaaaaaaaaaaaaaaaaaaaa lek ou le seim riahi o...     -1\n",
+            "1  SKCLXCJ       cha3eb fey9elkoum menghir ta7ayoul ou kressi     -1\n",
+            "2  V1TVXIJ  bereau degage nathef ya slim walahi ya7chiw fi...     -1\n",
+            "3  U0TTYY8                                          ak slouma      1\n",
+            "4  68DX797  entom titmanou lina a7na 3iid moubarik a7na ch...     -1\n",
+            "        ID                                               text\n",
+            "0  2DDHQW9   barcha aaindou fiha hak w barcha teflim kadhalik\n",
+            "1  5HY6UEY                               ye gernabou ye 9a7ba\n",
+            "2  ATNVUJX                     saber w barra rabbi m3ak 5ouya\n",
+            "3  Q9XYVOQ               cha3ébbb ta7aaaaannnnnnnnnnn tfouuhh\n",
+            "4  TOAHLRH  rabi y5alihoulek w yfar7ek bih w inchallah itc...\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "NJCdAy1qpwfa"
+      },
+      "source": [
+        "training_leb = []\n",
+        "for l in train_ds.label:\n",
+        "    i = 1;\n",
+        "    if l == -1:\n",
+        "        i=0\n",
+        "    training_leb.append(i)\n",
+        "\n",
+        "train_ds.drop(columns = ['label'], inplace = True)\n",
+        "train_ds['label'] = training_leb"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "GflbtcRupwfa",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "cc6ea161-6e75-4535-80d1-1c3de1860e4b"
+      },
+      "source": [
+        "print(train_ds.head())\n",
+        "print(test_ds.head())"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "        ID                                               text  label\n",
+            "0  13P0QT0  3sbaaaaaaaaaaaaaaaaaaaa lek ou le seim riahi o...      0\n",
+            "1  SKCLXCJ       cha3eb fey9elkoum menghir ta7ayoul ou kressi      0\n",
+            "2  V1TVXIJ  bereau degage nathef ya slim walahi ya7chiw fi...      0\n",
+            "3  U0TTYY8                                          ak slouma      1\n",
+            "4  68DX797  entom titmanou lina a7na 3iid moubarik a7na ch...      0\n",
+            "        ID                                               text\n",
+            "0  2DDHQW9   barcha aaindou fiha hak w barcha teflim kadhalik\n",
+            "1  5HY6UEY                               ye gernabou ye 9a7ba\n",
+            "2  ATNVUJX                     saber w barra rabbi m3ak 5ouya\n",
+            "3  Q9XYVOQ               cha3ébbb ta7aaaaannnnnnnnnnn tfouuhh\n",
+            "4  TOAHLRH  rabi y5alihoulek w yfar7ek bih w inchallah itc...\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "go4KjJFNpwfb"
+      },
+      "source": [
+        "import re\n",
+        "import string\n",
+        "import unicodedata\n",
+        "\n",
+        "def lower_text(text):\n",
+        "    return text.lower()\n",
+        "\n",
+        "def remove_emails(x):\n",
+        "     return re.sub(r'([a-z0-9+._-]+@[a-z0-9+._-]+\\.[a-z0-9+_-]+)',\"\", x)\n",
+        "\n",
+        "\n",
+        "def remove_urls(x):\n",
+        "    return re.sub(r'(http|https|ftp|ssh)://([\\w_-]+(?:(?:\\.[\\w_-]+)+))([\\w.,@?^=%&:/~+#-]*[\\w@?^=%&/~+#-])?', '' , x)\n",
+        "\n",
+        "def remove_rt(x):\n",
+        "    return re.sub(r'\\brt\\b', '', x).strip()\n",
+        "\n",
+        "def remove_special_chars(x):\n",
+        "    x = re.sub(r'[^\\w ]+', \"\", x)\n",
+        "    x = ' '.join(x.split())\n",
+        "    return x\n",
+        "\n",
+        "\n",
+        "def remove_accented_chars(x):\n",
+        "    x = unicodedata.normalize('NFKD', x).encode('ascii', 'ignore').decode('utf-8', 'ignore')\n",
+        "    return x"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "7tjamRJnpwfb"
+      },
+      "source": [
+        "train_ds[\"text\"] = train_ds.text.map(lower_text)\n",
+        "test_ds[\"text\"] = test_ds.text.map(lower_text)\n",
+        "\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_emails)\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_urls)\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_rt)\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_special_chars)\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_accented_chars)\n",
+        "\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_emails)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_urls)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_rt)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_special_chars)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_accented_chars)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "04FzxZV5pwfb",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "0ee3071a-bf23-4a02-be5b-852e4a3cf9df"
+      },
+      "source": [
+        "print(train_ds.head())\n",
+        "print(test_ds.head())"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "        ID                                               text  label\n",
+            "0  13P0QT0  3sbaaaaaaaaaaaaaaaaaaaa lek ou le seim riahi o...      0\n",
+            "1  SKCLXCJ       cha3eb fey9elkoum menghir ta7ayoul ou kressi      0\n",
+            "2  V1TVXIJ  bereau degage nathef ya slim walahi ya7chiw fi...      0\n",
+            "3  U0TTYY8                                          ak slouma      1\n",
+            "4  68DX797  entom titmanou lina a7na 3iid moubarik a7na ch...      0\n",
+            "        ID                                               text\n",
+            "0  2DDHQW9   barcha aaindou fiha hak w barcha teflim kadhalik\n",
+            "1  5HY6UEY                               ye gernabou ye 9a7ba\n",
+            "2  ATNVUJX                     saber w barra rabbi m3ak 5ouya\n",
+            "3  Q9XYVOQ               cha3ebbb ta7aaaaannnnnnnnnnn tfouuhh\n",
+            "4  TOAHLRH  rabi y5alihoulek w yfar7ek bih w inchallah itc...\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "tkYgAhJopwfc"
+      },
+      "source": [
+        "from itertools import groupby\n",
+        "def reshape_words(text):\n",
+        "    words = text.split()\n",
+        "    for word in words:\n",
+        "        i = words.index(word)\n",
+        "        chars = [ch for ch in words[i]]\n",
+        "        chars = [x[0] for x in groupby(chars)]\n",
+        "        words[i] = \"\".join(chars)\n",
+        "    return \" \".join(words)\n",
+        "\n",
+        "train_ds[\"text\"] = train_ds.text.map(reshape_words)\n",
+        "test_ds[\"text\"] = test_ds.text.map(reshape_words)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "TJv67R1jpwfc",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 195
+        },
+        "outputId": "891601f3-62ba-402d-cfac-3c05f1534f03"
+      },
+      "source": [
+        "test_ds.head()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>ID</th>\n",
+              "      <th>text</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>2DDHQW9</td>\n",
+              "      <td>barcha aindou fiha hak w barcha teflim kadhalik</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>5HY6UEY</td>\n",
+              "      <td>ye gernabou ye 9a7ba</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>ATNVUJX</td>\n",
+              "      <td>saber w bara rabi m3ak 5ouya</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>Q9XYVOQ</td>\n",
+              "      <td>cha3eb ta7an tfouh</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>TOAHLRH</td>\n",
+              "      <td>rabi y5alihoulek w yfar7ek bih w inchalah itch...</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "        ID                                               text\n",
+              "0  2DDHQW9    barcha aindou fiha hak w barcha teflim kadhalik\n",
+              "1  5HY6UEY                               ye gernabou ye 9a7ba\n",
+              "2  ATNVUJX                       saber w bara rabi m3ak 5ouya\n",
+              "3  Q9XYVOQ                                 cha3eb ta7an tfouh\n",
+              "4  TOAHLRH  rabi y5alihoulek w yfar7ek bih w inchalah itch..."
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 14
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "fOu2UOWtpwfc"
+      },
+      "source": [
+        "from collections import Counter\n",
+        "\n",
+        "# Count unique words\n",
+        "def counter_word(text_col):\n",
+        "    count = Counter()\n",
+        "    for text in text_col.values:\n",
+        "        for word in text.split():\n",
+        "            count[word] += 1\n",
+        "    return count\n",
+        "\n",
+        "# Count unique words\n",
+        "def counter_word_from_list(text_col):\n",
+        "    count = Counter()\n",
+        "    for text in text_col:\n",
+        "        for word in text.split():\n",
+        "            count[word] += 1\n",
+        "    return count"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "eSQGZoNtIy9k"
+      },
+      "source": [
+        "def remove_special(text):\n",
+        "  filtered_words = [word for word in text.split()]\n",
+        "  for i in range(len(filtered_words)):\n",
+        "    chars = [char for char in filtered_words[i]]\n",
+        "    for j in range(len(chars)):\n",
+        "      if chars[j] == \"1\" or chars[j] == \"2\":\n",
+        "        chars[j] = \"a\"\n",
+        "      elif chars[j] == \"4\":\n",
+        "        chars[j] = \"dh\"\n",
+        "      elif chars[j] == \"5\":\n",
+        "        chars[j] = \"kh\"\n",
+        "      elif chars[j] == \"7\":\n",
+        "        chars[j] = \"h\"\n",
+        "      elif chars[j] == \"8\":\n",
+        "        chars[j] = \"gh\"\n",
+        "      elif chars[j] == \"9\":\n",
+        "        chars[j] = \"k\"\n",
+        "    filtered_words[i] = \"\".join(chars)\n",
+        "  return \" \".join(filtered_words)\n",
+        "\n",
+        "train_ds[\"text\"] = train_ds.text.map(remove_special)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_special)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "xR7WOWgyD95n"
+      },
+      "source": [
+        "def regroup_words(text):\n",
+        "    text = text.lower()\n",
+        "    filtered_words = [word for word in text.split()]\n",
+        "    for i in range(len(filtered_words)):\n",
+        "      if filtered_words[i] == \"ou\" or filtered_words[i] == \"we\" or filtered_words[i] == \"wa\" or filtered_words[i] == \"wou\":\n",
+        "        filtered_words[i] = \"w\"\n",
+        "      elif filtered_words[i] == \"mn\" or filtered_words[i] == \"min\":\n",
+        "        filtered_words[i] = \"men\"\n",
+        "      elif filtered_words[i] == \"eni\" or filtered_words[i] == \"ena\" or filtered_words[i] == \"ani\":\n",
+        "        filtered_words[i] = \"ana\"\n",
+        "      elif filtered_words[i] == \"elli\" or filtered_words[i] == \"illi\" or filtered_words[i] == \"ili\" or filtered_words[i] == \"l\" or filtered_words[i] == \"le\" or filtered_words[i] == \"il\" or filtered_words[i] == \"el\":\n",
+        "        filtered_words[i] = \"li\"\n",
+        "      elif filtered_words[i] == \"alah\":\n",
+        "        filtered_words[i] = \"allah\"\n",
+        "      elif filtered_words[i] == \"m3k\":\n",
+        "        filtered_words[i] = \"m3ak\"\n",
+        "      elif filtered_words[i] == \"f\" or filtered_words[i] == \"fe\" or filtered_words[i] == \"fel\" or filtered_words[i] == \"fil\":\n",
+        "        filtered_words[i] = \"fi\"\n",
+        "      elif filtered_words[i] == \"bil\" or filtered_words[i] == \"b\" or filtered_words[i] == \"be\":\n",
+        "        filtered_words[i] = \"bel\"\n",
+        "      elif filtered_words[i] == \"lek\":\n",
+        "        filtered_words[i] = \"lik\"\n",
+        "      elif filtered_words[i] == \"asba\" or filtered_words[i] == \"3sba\":\n",
+        "        filtered_words[i] = \"3asba\"\n",
+        "    return \" \".join(filtered_words)\n",
+        "\n",
+        "train_ds[\"text\"] = train_ds.text.map(regroup_words)\n",
+        "test_ds[\"text\"] = test_ds.text.map(regroup_words)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "pPDq4mUnpwfc"
+      },
+      "source": [
+        "counter = counter_word(train_ds.text)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "o0PskJFbG27P",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 195
+        },
+        "outputId": "909e52c8-3f33-4ef6-9e23-12dda9c879ad"
+      },
+      "source": [
+        "train_ds.head()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>ID</th>\n",
+              "      <th>text</th>\n",
+              "      <th>label</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>13P0QT0</td>\n",
+              "      <td>3asba lik w li seim riahi w 3asba li ca</td>\n",
+              "      <td>0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>SKCLXCJ</td>\n",
+              "      <td>cha3eb feykelkoum menghir tahayoul w kresi</td>\n",
+              "      <td>0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>V1TVXIJ</td>\n",
+              "      <td>bereau degage nathef ya slim walahi yahchiw fi...</td>\n",
+              "      <td>0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>U0TTYY8</td>\n",
+              "      <td>ak slouma</td>\n",
+              "      <td>1</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>68DX797</td>\n",
+              "      <td>entom titmanou lina ahna 3id moubarik ahna cha...</td>\n",
+              "      <td>0</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "        ID                                               text  label\n",
+              "0  13P0QT0            3asba lik w li seim riahi w 3asba li ca      0\n",
+              "1  SKCLXCJ         cha3eb feykelkoum menghir tahayoul w kresi      0\n",
+              "2  V1TVXIJ  bereau degage nathef ya slim walahi yahchiw fi...      0\n",
+              "3  U0TTYY8                                          ak slouma      1\n",
+              "4  68DX797  entom titmanou lina ahna 3id moubarik ahna cha...      0"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 19
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "KYA6fW2wpwfd",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "354de2b0-0b85-4f56-eb2f-1f54a0a1c58a"
+      },
+      "source": [
+        "import nltk\n",
+        "nltk.download(\"stopwords\")\n",
+        "from nltk.corpus import stopwords\n",
+        "frstop = stopwords.words('french')\n",
+        "\n",
+        "def remove_stopwords(text):\n",
+        "    text = text.lower()\n",
+        "    filtered_words = [word for word in text.split() if word not in frstop]\n",
+        "    return \" \".join(filtered_words)\n",
+        "\n",
+        "def lower_text(text):\n",
+        "    return text.lower()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping corpora/stopwords.zip.\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "30-N0-dapwfd"
+      },
+      "source": [
+        "train_ds[\"text\"] = train_ds.text.map(remove_stopwords)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_stopwords)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "b8MbeKPxpwfd",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "fdeaf3d6-1c86-4314-93d7-f97d8919340a"
+      },
+      "source": [
+        "print(train_ds.head())\n",
+        "print(test_ds.head())"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "        ID                                               text  label\n",
+            "0  13P0QT0            3asba lik w li seim riahi w 3asba li ca      0\n",
+            "1  SKCLXCJ         cha3eb feykelkoum menghir tahayoul w kresi      0\n",
+            "2  V1TVXIJ  bereau degage nathef ya slim walahi yahchiw fi...      0\n",
+            "3  U0TTYY8                                          ak slouma      1\n",
+            "4  68DX797  entom titmanou lina ahna 3id moubarik ahna cha...      0\n",
+            "        ID                                               text\n",
+            "0  2DDHQW9    barcha aindou fiha hak w barcha teflim kadhalik\n",
+            "1  5HY6UEY                               ye gernabou ye kahba\n",
+            "2  ATNVUJX                      saber w bara rabi m3ak khouya\n",
+            "3  Q9XYVOQ                                 cha3eb tahan tfouh\n",
+            "4  TOAHLRH  rabi ykhalihoulek w yfarhek bih w inchalah itc...\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "96FsIKXIpwfd"
+      },
+      "source": [
+        "def remove_useless(text):\n",
+        "    filtered_words = [word for word in text.split() if len(word)>3 or word == \"nik\" or word == \"si\" or word == \"ok\" or word == \"het\"]\n",
+        "    return \" \".join(filtered_words)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "aFXaIsXIuCa9"
+      },
+      "source": [
+        "train_ds[\"text\"] = train_ds.text.map(remove_useless)\n",
+        "test_ds[\"text\"] = test_ds.text.map(remove_useless)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "lPXMhRjgpwfe",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "b91e3ffc-9ecb-42f0-9b3b-c133a3e3d6c6"
+      },
+      "source": [
+        "all_sentences = list(train_ds.text) + list(test_ds.text)\n",
+        "counter = counter_word_from_list(all_sentences)\n",
+        "counter.most_common()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "[('rabi', 11928),\n",
+              " ('slim', 10183),\n",
+              " ('si', 5202),\n",
+              " ('bravo', 5044),\n",
+              " ('bech', 4587),\n",
+              " ('allah', 4564),\n",
+              " ('m3ak', 4246),\n",
+              " ('slouma', 3320),\n",
+              " ('hata', 2429),\n",
+              " ('barcha', 2422),\n",
+              " ('mala', 2272),\n",
+              " ('enti', 2219),\n",
+              " ('tounes', 2207),\n",
+              " ('khir', 2180),\n",
+              " ('mabrouk', 2139),\n",
+              " ('3ala', 2125),\n",
+              " ('brabi', 2082),\n",
+              " ('tawa', 2065),\n",
+              " ('m3alem', 2043),\n",
+              " ('dima', 1998),\n",
+              " ('riahi', 1944),\n",
+              " ('nchalah', 1846),\n",
+              " ('ahna', 1828),\n",
+              " ('haja', 1822),\n",
+              " ('bara', 1806),\n",
+              " ('wala', 1804),\n",
+              " ('mouch', 1764),\n",
+              " ('chay', 1760),\n",
+              " ('club', 1659),\n",
+              " ('walah', 1657),\n",
+              " ('3lik', 1635),\n",
+              " ('inchalah', 1487),\n",
+              " ('chkoun', 1447),\n",
+              " ('kima', 1410),\n",
+              " ('haka', 1385),\n",
+              " ('rajel', 1299),\n",
+              " ('inti', 1240),\n",
+              " ('mta3', 1224),\n",
+              " ('fama', 1200),\n",
+              " ('lkol', 1167),\n",
+              " ('president', 1100),\n",
+              " ('cha3b', 1040),\n",
+              " ('howa', 1029),\n",
+              " ('flous', 1029),\n",
+              " ('khater', 1028),\n",
+              " ('fiha', 904),\n",
+              " ('tunis', 894),\n",
+              " ('bled', 876),\n",
+              " ('belehi', 871),\n",
+              " ('3lina', 867),\n",
+              " ('merci', 849),\n",
+              " ('tounis', 826),\n",
+              " ('dawla', 816),\n",
+              " ('hedha', 803),\n",
+              " ('rana', 794),\n",
+              " ('jam3iya', 788),\n",
+              " ('3lih', 788),\n",
+              " ('saha', 783),\n",
+              " ('bien', 770),\n",
+              " ('wela', 769),\n",
+              " ('shih', 735),\n",
+              " ('wahed', 721),\n",
+              " ('ahla', 715),\n",
+              " ('houwa', 711),\n",
+              " ('kbal', 699),\n",
+              " ('mara', 689),\n",
+              " ('klem', 687),\n",
+              " ('houma', 675),\n",
+              " ('wenti', 660),\n",
+              " ('mech', 647),\n",
+              " ('theb', 645),\n",
+              " ('marzouki', 640),\n",
+              " ('rouhek', 638),\n",
+              " ('mela', 631),\n",
+              " ('rahou', 618),\n",
+              " ('vive', 613),\n",
+              " ('nchala', 613),\n",
+              " ('patron', 613),\n",
+              " ('jam3ia', 612),\n",
+              " ('degage', 609),\n",
+              " ('tahki', 607),\n",
+              " ('chwaya', 591),\n",
+              " ('bone', 590),\n",
+              " ('3asba', 587),\n",
+              " ('moch', 583),\n",
+              " ('hedhi', 580),\n",
+              " ('walahi', 573),\n",
+              " ('yarhmou', 573),\n",
+              " ('khali', 567),\n",
+              " ('ok', 546),\n",
+              " ('yekhi', 539),\n",
+              " ('weld', 537),\n",
+              " ('nhar', 536),\n",
+              " ('kbir', 535),\n",
+              " ('zebi', 526),\n",
+              " ('rais', 522),\n",
+              " ('feha', 520),\n",
+              " ('alik', 513),\n",
+              " ('wehed', 513),\n",
+              " ('aime', 513),\n",
+              " ('chouf', 510),\n",
+              " ('sami', 506),\n",
+              " ('m3ana', 502),\n",
+              " ('enchalah', 502),\n",
+              " ('rahi', 501),\n",
+              " ('hetha', 500),\n",
+              " ('3bed', 498),\n",
+              " ('jomhour', 497),\n",
+              " ('nheb', 494),\n",
+              " ('bach', 491),\n",
+              " ('hiya', 491),\n",
+              " ('enta', 490),\n",
+              " ('nik', 490),\n",
+              " ('3lech', 489),\n",
+              " ('ahsen', 485),\n",
+              " ('zeda', 484),\n",
+              " ('raais', 476),\n",
+              " ('kifech', 474),\n",
+              " ('rjel', 473),\n",
+              " ('akber', 473),\n",
+              " ('yeser', 472),\n",
+              " ('behi', 469),\n",
+              " ('okhra', 457),\n",
+              " ('lefriki', 456),\n",
+              " ('koul', 453),\n",
+              " ('page', 453),\n",
+              " ('omek', 449),\n",
+              " ('raby', 446),\n",
+              " ('taraji', 445),\n",
+              " ('tunisie', 444),\n",
+              " ('akther', 443),\n",
+              " ('kalou', 443),\n",
+              " ('tfouh', 441),\n",
+              " ('elkol', 438),\n",
+              " ('tounsi', 437),\n",
+              " ('mte3', 437),\n",
+              " ('khouya', 436),\n",
+              " ('plus', 433),\n",
+              " ('weli', 432),\n",
+              " ('belahi', 431),\n",
+              " ('ekhdem', 428),\n",
+              " ('ba3d', 427),\n",
+              " ('tahan', 426),\n",
+              " ('vraiment', 425),\n",
+              " ('wahdek', 422),\n",
+              " ('kahba', 422),\n",
+              " ('sahbi', 420),\n",
+              " ('m3ah', 418),\n",
+              " ('koura', 418),\n",
+              " ('khedma', 416),\n",
+              " ('lebled', 415),\n",
+              " ('yezi', 415),\n",
+              " ('3andou', 415),\n",
+              " ('kbira', 413),\n",
+              " ('ta3mel', 406),\n",
+              " ('donc', 402),\n",
+              " ('klay', 401),\n",
+              " ('lifriki', 398),\n",
+              " ('africain', 394),\n",
+              " ('sayeb', 393),\n",
+              " ('nchlh', 392),\n",
+              " ('enes', 392),\n",
+              " ('tkoun', 391),\n",
+              " ('fihom', 391),\n",
+              " ('cha3eb', 389),\n",
+              " ('farkh', 389),\n",
+              " ('yheb', 387),\n",
+              " ('hram', 385),\n",
+              " ('tahana', 385),\n",
+              " ('kolna', 382),\n",
+              " ('awel', 382),\n",
+              " ('jdid', 380),\n",
+              " ('mahlek', 380),\n",
+              " ('tkoul', 379),\n",
+              " ('bkhir', 378),\n",
+              " ('hethi', 374),\n",
+              " ('hadha', 369),\n",
+              " ('hala', 367),\n",
+              " ('wled', 366),\n",
+              " ('courage', 366),\n",
+              " ('akwa', 366),\n",
+              " ('3likom', 365),\n",
+              " ('fikom', 362),\n",
+              " ('tres', 362),\n",
+              " ('rani', 361),\n",
+              " ('snin', 360),\n",
+              " ('wahda', 359),\n",
+              " ('biha', 357),\n",
+              " ('yahki', 355),\n",
+              " ('kalb', 354),\n",
+              " ('labes', 352),\n",
+              " ('ya3mel', 352),\n",
+              " ('rouhou', 348),\n",
+              " ('wakt', 348),\n",
+              " ('la3bed', 345),\n",
+              " ('marbouha', 342),\n",
+              " ('3andi', 340),\n",
+              " ('love', 339),\n",
+              " ('twali', 339),\n",
+              " ('hatha', 339),\n",
+              " ('forza', 338),\n",
+              " ('enty', 333),\n",
+              " ('3ana', 331),\n",
+              " ('ya3tik', 329),\n",
+              " ('3lihom', 328),\n",
+              " ('chnowa', 327),\n",
+              " ('wahna', 327),\n",
+              " ('chiboub', 327),\n",
+              " ('lotfi', 326),\n",
+              " ('3andek', 324),\n",
+              " ('yekhdem', 322),\n",
+              " ('kamel', 321),\n",
+              " ('inta', 320),\n",
+              " ('mazel', 319),\n",
+              " ('hada', 315),\n",
+              " ('fina', 310),\n",
+              " ('inchala', 310),\n",
+              " ('kanet', 309),\n",
+              " ('lazem', 308),\n",
+              " ('tayara', 304),\n",
+              " ('nahna', 303),\n",
+              " ('king', 301),\n",
+              " ('lclub', 300),\n",
+              " ('machalah', 299),\n",
+              " ('ryahi', 297),\n",
+              " ('winti', 295),\n",
+              " ('kifek', 293),\n",
+              " ('akbar', 292),\n",
+              " ('kleb', 291),\n",
+              " ('nayek', 290),\n",
+              " ('wrabi', 290),\n",
+              " ('bsaraha', 289),\n",
+              " ('moncef', 287),\n",
+              " ('walh', 287),\n",
+              " ('ryehi', 281),\n",
+              " ('3leh', 281),\n",
+              " ('jam3eya', 279),\n",
+              " ('berasmi', 277),\n",
+              " ('equipe', 276),\n",
+              " ('sanfara', 275),\n",
+              " ('m3alim', 274),\n",
+              " ('kont', 272),\n",
+              " ('amin', 271),\n",
+              " ('echa3b', 271),\n",
+              " ('nhebou', 271),\n",
+              " ('video', 268),\n",
+              " ('normal', 268),\n",
+              " ('adore', 268),\n",
+              " ('like', 267),\n",
+              " ('lina', 265),\n",
+              " ('za3ma', 265),\n",
+              " ('waktech', 265),\n",
+              " ('boutoula', 265),\n",
+              " ('tekhdem', 264),\n",
+              " ('tahya', 264),\n",
+              " ('joueur', 263),\n",
+              " ('erajel', 262),\n",
+              " ('miboun', 258),\n",
+              " ('lezem', 258),\n",
+              " ('clip', 257),\n",
+              " ('match', 256),\n",
+              " ('kadech', 255),\n",
+              " ('chance', 254),\n",
+              " ('menek', 254),\n",
+              " ('zouz', 250),\n",
+              " ('twensa', 250),\n",
+              " ('continuation', 247),\n",
+              " ('ykoun', 246),\n",
+              " ('grand', 246),\n",
+              " ('sbeh', 245),\n",
+              " ('wasel', 244),\n",
+              " ('yakhi', 244),\n",
+              " ('yarhem', 243),\n",
+              " ('rahom', 243),\n",
+              " ('chbik', 242),\n",
+              " ('hkeya', 242),\n",
+              " ('3liha', 241),\n",
+              " ('djabou', 241),\n",
+              " ('bouk', 238),\n",
+              " ('kifeh', 238),\n",
+              " ('alexis', 238),\n",
+              " ('bravobravo', 237),\n",
+              " ('tous', 236),\n",
+              " ('mahouch', 236),\n",
+              " ('meli', 236),\n",
+              " ('heka', 235),\n",
+              " ('malem', 235),\n",
+              " ('amine', 235),\n",
+              " ('clubiste', 234),\n",
+              " ('nabara', 234),\n",
+              " ('jam3ya', 234),\n",
+              " ('kolha', 233),\n",
+              " ('a3mel', 233),\n",
+              " ('film', 233),\n",
+              " ('3andha', 231),\n",
+              " ('ba3ed', 230),\n",
+              " ('raja3', 230),\n",
+              " ('thawra', 230),\n",
+              " ('joumhour', 228),\n",
+              " ('m3ek', 228),\n",
+              " ('come', 228),\n",
+              " ('denya', 227),\n",
+              " ('titre', 226),\n",
+              " ('wahid', 226),\n",
+              " ('bilehi', 225),\n",
+              " ('raho', 225),\n",
+              " ('bele', 225),\n",
+              " ('houa', 224),\n",
+              " ('lyoum', 222),\n",
+              " ('aman', 222),\n",
+              " ('dislike', 221),\n",
+              " ('hadhi', 220),\n",
+              " ('hadi', 219),\n",
+              " ('bina', 219),\n",
+              " ('bras', 218),\n",
+              " ('tout', 218),\n",
+              " ('ta3ref', 217),\n",
+              " ('chey', 216),\n",
+              " ('kaleb', 215),\n",
+              " ('tofla', 215),\n",
+              " ('ma3adech', 214),\n",
+              " ('entouma', 214),\n",
+              " ('menou', 214),\n",
+              " ('nahdha', 213),\n",
+              " ('heya', 213),\n",
+              " ('deja', 212),\n",
+              " ('hedi', 212),\n",
+              " ('barka', 211),\n",
+              " ('rajil', 211),\n",
+              " ('basem', 211),\n",
+              " ('ghir', 210),\n",
+              " ('3and', 210),\n",
+              " ('ekher', 210),\n",
+              " ('contre', 209),\n",
+              " ('3idek', 209),\n",
+              " ('youm', 208),\n",
+              " ('jdida', 208),\n",
+              " ('baba', 208),\n",
+              " ('vrai', 206),\n",
+              " ('chomage', 206),\n",
+              " ('yechfih', 205),\n",
+              " ('shiha', 205),\n",
+              " ('yemchi', 205),\n",
+              " ('bihom', 203),\n",
+              " ('ka3ed', 203),\n",
+              " ('akid', 203),\n",
+              " ('walit', 203),\n",
+              " ('meme', 201),\n",
+              " ('yelzem', 201),\n",
+              " ('hathi', 200),\n",
+              " ('sidi', 199),\n",
+              " ('zeyed', 199),\n",
+              " ('sanfour', 197),\n",
+              " ('nesma', 197),\n",
+              " ('said', 196),\n",
+              " ('mich', 194),\n",
+              " ('zayed', 194),\n",
+              " ('yarham', 193),\n",
+              " ('alih', 193),\n",
+              " ('quoi', 192),\n",
+              " ('kolou', 191),\n",
+              " ('fech', 191),\n",
+              " ('menha', 191),\n",
+              " ('parc', 190),\n",
+              " ('3adi', 190),\n",
+              " ('enchala', 190),\n",
+              " ('walet', 190),\n",
+              " ('khsara', 189),\n",
+              " ('ataquant', 189),\n",
+              " ('tnajem', 188),\n",
+              " ('m3alam', 188),\n",
+              " ('yarahmou', 187),\n",
+              " ('mnin', 186),\n",
+              " ('yaser', 185),\n",
+              " ('belhak', 184),\n",
+              " ('beha', 184),\n",
+              " ('omha', 184),\n",
+              " ('iheb', 184),\n",
+              " ('zeby', 183),\n",
+              " ('erjel', 183),\n",
+              " ('lhak', 181),\n",
+              " ('tabka', 181),\n",
+              " ('hkeyet', 179),\n",
+              " ('ghali', 179),\n",
+              " ('trop', 179),\n",
+              " ('leclub', 179),\n",
+              " ('hana', 179),\n",
+              " ('lahkeya', 178),\n",
+              " ('m3akom', 177),\n",
+              " ('bilahi', 176),\n",
+              " ('beli', 176),\n",
+              " ('sloma', 176),\n",
+              " ('blad', 175),\n",
+              " ('kamcha', 175),\n",
+              " ('nchalh', 174),\n",
+              " ('alina', 174),\n",
+              " ('kais', 173),\n",
+              " ('toul', 173),\n",
+              " ('khit', 173),\n",
+              " ('yhebou', 172),\n",
+              " ('em3ak', 172),\n",
+              " ('hahaha', 171),\n",
+              " ('winou', 171),\n",
+              " ('ywafkek', 170),\n",
+              " ('thin', 170),\n",
+              " ('louled', 170),\n",
+              " ('bjeh', 170),\n",
+              " ('chaine', 170),\n",
+              " ('wakil', 170),\n",
+              " ('zina', 169),\n",
+              " ('fait', 168),\n",
+              " ('rohek', 167),\n",
+              " ('rakom', 167),\n",
+              " ('menhom', 167),\n",
+              " ('m3ahom', 167),\n",
+              " ('mahich', 167),\n",
+              " ('twansa', 167),\n",
+              " ('chniya', 166),\n",
+              " ('3mal', 165),\n",
+              " ('lekher', 165),\n",
+              " ('beji', 164),\n",
+              " ('juste', 164),\n",
+              " ('weldi', 164),\n",
+              " ('awled', 162),\n",
+              " ('bich', 161),\n",
+              " ('salah', 161),\n",
+              " ('fadina', 161),\n",
+              " ('anta', 160),\n",
+              " ('ched', 160),\n",
+              " ('thib', 160),\n",
+              " ('yetraba', 160),\n",
+              " ('just', 160),\n",
+              " ('saber', 160),\n",
+              " ('rouhik', 160),\n",
+              " ('politique', 159),\n",
+              " ('leflous', 159),\n",
+              " ('surtout', 158),\n",
+              " ('kelma', 158),\n",
+              " ('mohamed', 158),\n",
+              " ('respect', 158),\n",
+              " ('chnouwa', 158),\n",
+              " ('zabour', 157),\n",
+              " ('3leha', 157),\n",
+              " ('joueurs', 157),\n",
+              " ('ma3neha', 157),\n",
+              " ('joueret', 157),\n",
+              " ('a3la', 156),\n",
+              " ('jamais', 155),\n",
+              " ('kodem', 155),\n",
+              " ('hani', 155),\n",
+              " ('hiwar', 155),\n",
+              " ('tchouf', 154),\n",
+              " ('behya', 154),\n",
+              " ('bhim', 154),\n",
+              " ('a3lik', 154),\n",
+              " ('efriki', 153),\n",
+              " ('krib', 153),\n",
+              " ('jemla', 153),\n",
+              " ('abone', 152),\n",
+              " ('temchi', 151),\n",
+              " ('honte', 151),\n",
+              " ('sarek', 150),\n",
+              " ('chnia', 150),\n",
+              " ('hajet', 150),\n",
+              " ('manich', 150),\n",
+              " ('chkon', 149),\n",
+              " ('rouh', 149),\n",
+              " ('klam', 149),\n",
+              " ('stade', 149),\n",
+              " ('haya', 148),\n",
+              " ('wahra', 148),\n",
+              " ('akal', 148),\n",
+              " ('hamdi', 148),\n",
+              " ('blasa', 148),\n",
+              " ('jenjon', 147),\n",
+              " ('libya', 147),\n",
+              " ('ya3ref', 147),\n",
+              " ('meskina', 147),\n",
+              " ('thama', 147),\n",
+              " ('kora', 147),\n",
+              " ('blech', 147),\n",
+              " ('home', 147),\n",
+              " ('houkouma', 147),\n",
+              " ('yezina', 146),\n",
+              " ('3amlou', 146),\n",
+              " ('mafamech', 146),\n",
+              " ('bahi', 146),\n",
+              " ('3maltou', 146),\n",
+              " ('omou', 145),\n",
+              " ('ykhalik', 145),\n",
+              " ('salem', 144),\n",
+              " ('tla3', 144),\n",
+              " ('chab', 144),\n",
+              " ('chbih', 144),\n",
+              " ('homa', 143),\n",
+              " ('mina', 143),\n",
+              " ('wisem', 143),\n",
+              " ('omkom', 143),\n",
+              " ('kouki', 143),\n",
+              " ('tbarkalah', 143),\n",
+              " ('nkoul', 143),\n",
+              " ('waldik', 142),\n",
+              " ('ya3mlou', 142),\n",
+              " ('flousek', 142),\n",
+              " ('kalbi', 142),\n",
+              " ('masakh', 142),\n",
+              " ('yarhmo', 141),\n",
+              " ('tjib', 141),\n",
+              " ('viva', 141),\n",
+              " ('mahou', 141),\n",
+              " ('nhebek', 140),\n",
+              " ('enas', 140),\n",
+              " ('t3ich', 140),\n",
+              " ('wini', 140),\n",
+              " ('mahla', 140),\n",
+              " ('3ali', 140),\n",
+              " ('akher', 139),\n",
+              " ('libled', 139),\n",
+              " ('khra', 138),\n",
+              " ('dandouk', 138),\n",
+              " ('capo', 138),\n",
+              " ('wenta', 138),\n",
+              " ('dayma', 138),\n",
+              " ('thebou', 138),\n",
+              " ('thika', 138),\n",
+              " ('hasbouna', 137),\n",
+              " ('benzarti', 137),\n",
+              " ('tahiya', 137),\n",
+              " ('tarja3', 137),\n",
+              " ('zboubna', 136),\n",
+              " ('waktha', 136),\n",
+              " ('3ada', 136),\n",
+              " ('kanoun', 136),\n",
+              " ('enahdha', 136),\n",
+              " ('saybou', 136),\n",
+              " ('jabri', 135),\n",
+              " ('montasar', 135),\n",
+              " ('rades', 135),\n",
+              " ('fikou', 135),\n",
+              " ('3alik', 135),\n",
+              " ('mahleha', 135),\n",
+              " ('heda', 135),\n",
+              " ('alors', 135),\n",
+              " ('ghalta', 134),\n",
+              " ('bledna', 134),\n",
+              " ('ejam3iya', 134),\n",
+              " ('mnayek', 133),\n",
+              " ('mechi', 133),\n",
+              " ('wrak', 133),\n",
+              " ('ywali', 133),\n",
+              " ('from', 133),\n",
+              " ('yabka', 132),\n",
+              " ('ma3ak', 132),\n",
+              " ('wili', 132),\n",
+              " ('korsi', 132),\n",
+              " ('baya', 132),\n",
+              " ('char', 132),\n",
+              " ('belek', 131),\n",
+              " ('style', 131),\n",
+              " ('mezel', 131),\n",
+              " ('ma3a', 130),\n",
+              " ('touns', 130),\n",
+              " ('nidhal', 130),\n",
+              " ('ykoul', 130),\n",
+              " ('ghalia', 130),\n",
+              " ('ensen', 130),\n",
+              " ('lebes', 129),\n",
+              " ('riyahi', 129),\n",
+              " ('ausi', 129),\n",
+              " ('mte3ek', 129),\n",
+              " ('khoya', 129),\n",
+              " ('idara', 129),\n",
+              " ('cete', 129),\n",
+              " ('na3ref', 129),\n",
+              " ('ya3tek', 128),\n",
+              " ('m3alm', 128),\n",
+              " ('famech', 128),\n",
+              " ('kolt', 128),\n",
+              " ('jaime', 128),\n",
+              " ('sebsi', 127),\n",
+              " ('lbled', 127),\n",
+              " ('kolhom', 127),\n",
+              " ('enou', 127),\n",
+              " ('akahaw', 127),\n",
+              " ('etoile', 126),\n",
+              " ('hand', 126),\n",
+              " ('khalina', 126),\n",
+              " ('aidek', 126),\n",
+              " ('entraineur', 126),\n",
+              " ('signaler', 126),\n",
+              " ('gati', 125),\n",
+              " ('bledi', 125),\n",
+              " ('farekh', 125),\n",
+              " ('eshih', 125),\n",
+              " ('ya3ni', 124),\n",
+              " ('kafon', 124),\n",
+              " ('wild', 124),\n",
+              " ('niveau', 124),\n",
+              " ('ka3da', 123),\n",
+              " ('fouk', 123),\n",
+              " ('enfin', 123),\n",
+              " ('koun', 123),\n",
+              " ('waket', 123),\n",
+              " ('karim', 122),\n",
+              " ('etounsi', 122),\n",
+              " ('nafs', 122),\n",
+              " ('kifou', 122),\n",
+              " ('nmout', 122),\n",
+              " ('choufou', 122),\n",
+              " ('nchoufou', 122),\n",
+              " ('3malt', 122),\n",
+              " ('ejam3ia', 122),\n",
+              " ('ka3din', 122),\n",
+              " ('makech', 122),\n",
+              " ('kalek', 121),\n",
+              " ('khalik', 121),\n",
+              " ('faut', 121),\n",
+              " ('zanatir', 121),\n",
+              " ('deyma', 121),\n",
+              " ('yarja3', 120),\n",
+              " ('france', 120),\n",
+              " ('hlowa', 120),\n",
+              " ('coupe', 120),\n",
+              " ('saye', 120),\n",
+              " ('barnamej', 119),\n",
+              " ('ma3k', 119),\n",
+              " ('samahni', 119),\n",
+              " ('ifriki', 119),\n",
+              " ('ikoun', 118),\n",
+              " ('amana', 118),\n",
+              " ('samir', 118),\n",
+              " ('ghneya', 118),\n",
+              " ('mlih', 118),\n",
+              " ('riehi', 118),\n",
+              " ('nice', 117),\n",
+              " ('yahya', 117),\n",
+              " ('fema', 117),\n",
+              " ('wehid', 117),\n",
+              " ('b3id', 116),\n",
+              " ('khawla', 116),\n",
+              " ('haha', 116),\n",
+              " ('bnet', 115),\n",
+              " ('weldik', 115),\n",
+              " ('ghodwa', 115),\n",
+              " ('beaucoup', 115),\n",
+              " ('bureau', 115),\n",
+              " ('wena', 115),\n",
+              " ('na3ma', 115),\n",
+              " ('nkolek', 114),\n",
+              " ('im3ak', 114),\n",
+              " ('famile', 114),\n",
+              " ('avant', 114),\n",
+              " ('intikhabet', 114),\n",
+              " ('khab', 113),\n",
+              " ('barnemej', 113),\n",
+              " ('yeziw', 113),\n",
+              " ('mabrok', 113),\n",
+              " ('hapy', 112),\n",
+              " ('esaha', 112),\n",
+              " ('yarhamha', 112),\n",
+              " ('mkachakh', 112),\n",
+              " ('minhom', 112),\n",
+              " ('zada', 111),\n",
+              " ('akthar', 111),\n",
+              " ('3andna', 111),\n",
+              " ('chway', 111),\n",
+              " ('m3aha', 111),\n",
+              " ('3omri', 111),\n",
+              " ('faha', 111),\n",
+              " ('ahsan', 110),\n",
+              " ('ma3koul', 110),\n",
+              " ('alech', 110),\n",
+              " ('yonsrek', 110),\n",
+              " ('ehna', 110),\n",
+              " ('ynajem', 110),\n",
+              " ('chokran', 109),\n",
+              " ('3andhom', 109),\n",
+              " ('wenchalah', 109),\n",
+              " ('beki', 109),\n",
+              " ('mchit', 109),\n",
+              " ('oficiel', 109),\n",
+              " ('besh', 109),\n",
+              " ('tfih', 109),\n",
+              " ('nhebouk', 108),\n",
+              " ('mafama', 108),\n",
+              " ('mariem', 108),\n",
+              " ('nchouf', 108),\n",
+              " ('sorek', 108),\n",
+              " ('point', 108),\n",
+              " ('sans', 108),\n",
+              " ('death', 108),\n",
+              " ('saison', 108),\n",
+              " ('rouhi', 108),\n",
+              " ('okhrej', 108),\n",
+              " ('monsieur', 107),\n",
+              " ('sousa', 107),\n",
+              " ('leklem', 107),\n",
+              " ('3omrou', 107),\n",
+              " ('kolkom', 107),\n",
+              " ('hkayet', 107),\n",
+              " ('chalah', 106),\n",
+              " ('wahdou', 106),\n",
+              " ('ta3mlou', 106),\n",
+              " ('tnik', 106),\n",
+              " ('3amla', 106),\n",
+              " ('kemla', 106),\n",
+              " ('zawali', 105),\n",
+              " ('sfax', 105),\n",
+              " ('fort', 105),\n",
+              " ('3alem', 105),\n",
+              " ('flousou', 105),\n",
+              " ('toujours', 105),\n",
+              " ('ta3mil', 105),\n",
+              " ('zaweli', 105),\n",
+              " ('chneya', 105),\n",
+              " ('3ando', 105),\n",
+              " ('ya3tikom', 105),\n",
+              " ('3amel', 105),\n",
+              " ('habit', 104),\n",
+              " ('bent', 104),\n",
+              " ('haded', 104),\n",
+              " ('rien', 104),\n",
+              " ('tounsia', 104),\n",
+              " ('aniversaire', 104),\n",
+              " ('zantour', 104),\n",
+              " ('comentaire', 104),\n",
+              " ('rebi', 104),\n",
+              " ('chabeb', 104),\n",
+              " ('mesage', 104),\n",
+              " ('khayeb', 104),\n",
+              " ('nahi', 104),\n",
+              " ('nafti', 104),\n",
+              " ('note', 104),\n",
+              " ('aleh', 104),\n",
+              " ('3lach', 103),\n",
+              " ('rwehkom', 103),\n",
+              " ('kalo', 103),\n",
+              " ('lkolna', 103),\n",
+              " ('yched', 103),\n",
+              " ('machi', 103),\n",
+              " ('fehom', 103),\n",
+              " ('ilkol', 102),\n",
+              " ('kharej', 102),\n",
+              " ('likom', 102),\n",
+              " ('retour', 102),\n",
+              " ('nhib', 102),\n",
+              " ('talka', 102),\n",
+              " ('mezyena', 102),\n",
+              " ('chmeta', 102),\n",
+              " ('tzid', 102),\n",
+              " ('koli', 101),\n",
+              " ('meskin', 101),\n",
+              " ('alahou', 101),\n",
+              " ('tartour', 101),\n",
+              " ('raji3oun', 101),\n",
+              " ('amena', 101),\n",
+              " ('m3lem', 101),\n",
+              " ('fehri', 101),\n",
+              " ('rasek', 101),\n",
+              " ('frere', 101),\n",
+              " ('ghaleb', 101),\n",
+              " ('tefhem', 101),\n",
+              " ('nour', 101),\n",
+              " ('yarhmek', 101),\n",
+              " ('alikom', 100),\n",
+              " ('batal', 100),\n",
+              " ('chapeau', 100),\n",
+              " ('lfriki', 100),\n",
+              " ('minou', 100),\n",
+              " ('walid', 100),\n",
+              " ('raha', 100),\n",
+              " ('mout', 100),\n",
+              " ('ghadi', 100),\n",
+              " ('faire', 100),\n",
+              " ('machrou3', 100),\n",
+              " ('rjal', 100),\n",
+              " ('algerie', 100),\n",
+              " ('lkhir', 100),\n",
+              " ('eryehi', 99),\n",
+              " ('rachwa', 99),\n",
+              " ('franca', 99),\n",
+              " ('madem', 99),\n",
+              " ('eryahi', 99),\n",
+              " ('hahahaha', 99),\n",
+              " ('3sal', 99),\n",
+              " ('moins', 99),\n",
+              " ('minha', 99),\n",
+              " ('hamla', 99),\n",
+              " ('halka', 99),\n",
+              " ('wila', 98),\n",
+              " ('sidek', 98),\n",
+              " ('medeb', 98),\n",
+              " ('idha', 97),\n",
+              " ('maya', 97),\n",
+              " ('ahmed', 97),\n",
+              " ('hamza', 97),\n",
+              " ('anti', 97),\n",
+              " ('kenet', 97),\n",
+              " ('froukh', 97),\n",
+              " ('andek', 97),\n",
+              " ('intouma', 96),\n",
+              " ('mte3ou', 96),\n",
+              " ('mta3ek', 96),\n",
+              " ('semi', 96),\n",
+              " ('na3mlou', 96),\n",
+              " ('saif', 96),\n",
+              " ('jeya', 96),\n",
+              " ('ysir', 96),\n",
+              " ('yehdik', 96),\n",
+              " ('sbah', 96),\n",
+              " ('projet', 95),\n",
+              " ('mcha', 95),\n",
+              " ('omhom', 95),\n",
+              " ('echa3eb', 95),\n",
+              " ('fekra', 95),\n",
+              " ('sayed', 95),\n",
+              " ('bkodret', 95),\n",
+              " ('kadeh', 95),\n",
+              " ('veut', 95),\n",
+              " ('hamdoulah', 95),\n",
+              " ('yefhem', 94),\n",
+              " ('ghalya', 94),\n",
+              " ('minek', 94),\n",
+              " ('klemek', 94),\n",
+              " ('mridh', 94),\n",
+              " ('belhi', 94),\n",
+              " ('mena', 94),\n",
+              " ('bikom', 93),\n",
+              " ('tfou', 93),\n",
+              " ('tehki', 93),\n",
+              " ('sout', 93),\n",
+              " ('moufida', 93),\n",
+              " ('melekher', 93),\n",
+              " ('andou', 93),\n",
+              " ('ataw', 93),\n",
+              " ('ahki', 93),\n",
+              " ('3awra', 93),\n",
+              " ('akeka', 93),\n",
+              " ('hakeka', 93),\n",
+              " ('pivot', 93),\n",
+              " ('hasilou', 93),\n",
+              " ('mili', 92),\n",
+              " ('serek', 92),\n",
+              " ('djabo', 92),\n",
+              " ('jana', 92),\n",
+              " ('omik', 92),\n",
+              " ('ntouma', 92),\n",
+              " ('elkhir', 92),\n",
+              " ('mehri', 92),\n",
+              " ('mochkla', 91),\n",
+              " ('masta', 91),\n",
+              " ('lkahba', 91),\n",
+              " ('yahmik', 91),\n",
+              " ('yarhamhom', 91),\n",
+              " ('khidma', 91),\n",
+              " ('siyesa', 91),\n",
+              " ('martou', 91),\n",
+              " ('ya3koubi', 91),\n",
+              " ('lahasa', 90),\n",
+              " ('jami3', 90),\n",
+              " ('3morha', 90),\n",
+              " ('youtube', 90),\n",
+              " ('rouhk', 90),\n",
+              " ('mazal', 90),\n",
+              " ('zgaw', 90),\n",
+              " ('leblad', 89),\n",
+              " ('batala', 89),\n",
+              " ('jmal', 89),\n",
+              " ('lotf', 89),\n",
+              " ('hkaya', 89),\n",
+              " ('maryoul', 89),\n",
+              " ('rayou', 89),\n",
+              " ('importe', 89),\n",
+              " ('siyasa', 88),\n",
+              " ('dhaher', 88),\n",
+              " ('domage', 88),\n",
+              " ('samara', 88),\n",
+              " ('lkolha', 88),\n",
+              " ('elhak', 88),\n",
+              " ('manel', 88),\n",
+              " ('chnwa', 88),\n",
+              " ('mahsoub', 88),\n",
+              " ('lougha', 88),\n",
+              " ('enabara', 88),\n",
+              " ('terbah', 88),\n",
+              " ('basket', 88),\n",
+              " ('admin', 87),\n",
+              " ('chnawa', 87),\n",
+              " ('wahd', 87),\n",
+              " ('techri', 87),\n",
+              " ('bilel', 87),\n",
+              " ('kemel', 87),\n",
+              " ('kona', 87),\n",
+              " ('fehria', 87),\n",
+              " ('amar', 87),\n",
+              " ('bonjour', 87),\n",
+              " ('jibelna', 87),\n",
+              " ('yatik', 87),\n",
+              " ('insen', 87),\n",
+              " ('entom', 86),\n",
+              " ('mnayka', 86),\n",
+              " ('kher', 86),\n",
+              " ('wlad', 86),\n",
+              " ('bajbouj', 86),\n",
+              " ('tared', 86),\n",
+              " ('ghoul', 86),\n",
+              " ('rayes', 86),\n",
+              " ('hezb', 86),\n",
+              " ('tunisien', 85),\n",
+              " ('omok', 85),\n",
+              " ('machari3', 85),\n",
+              " ('ma3lem', 85),\n",
+              " ('het', 85),\n",
+              " ('jboura', 85),\n",
+              " ('wentouma', 85),\n",
+              " ('mashalah', 85),\n",
+              " ('3omra', 84),\n",
+              " ('partie', 84),\n",
+              " ('ghalet', 84),\n",
+              " ('going', 84),\n",
+              " ('barsha', 84),\n",
+              " ('much', 84),\n",
+              " ('ya3mil', 84),\n",
+              " ('na3rfou', 84),\n",
+              " ('wakteh', 84),\n",
+              " ('yehdi', 84),\n",
+              " ('alex', 84),\n",
+              " ('hkouma', 84),\n",
+              " ('hama', 84),\n",
+              " ('sayer', 84),\n",
+              " ('gafsa', 84),\n",
+              " ('ilayhi', 83),\n",
+              " ('kolo', 83),\n",
+              " ('salam', 83),\n",
+              " ('alahoma', 83),\n",
+              " ('dakhel', 83),\n",
+              " ('wehd', 83),\n",
+              " ('hacha', 83),\n",
+              " ('tarikh', 83),\n",
+              " ('malyoun', 83),\n",
+              " ('l3ar', 83),\n",
+              " ('khatr', 83),\n",
+              " ('bachir', 83),\n",
+              " ('3andik', 83),\n",
+              " ('tsir', 82),\n",
+              " ('raison', 82),\n",
+              " ('emision', 82),\n",
+              " ('salouma', 82),\n",
+              " ('chad', 82),\n",
+              " ('amal', 82),\n",
+              " ('bouh', 82),\n",
+              " ('khayba', 82),\n",
+              " ('sghir', 82),\n",
+              " ('mahleh', 82),\n",
+              " ('nhbk', 82),\n",
+              " ('forsa', 82),\n",
+              " ('manoula', 82),\n",
+              " ('selim', 82),\n",
+              " ('clubistia', 82),\n",
+              " ('kbar', 82),\n",
+              " ('travailer', 82),\n",
+              " ('louhichi', 81),\n",
+              " ('yechfik', 81),\n",
+              " ('sbab', 81),\n",
+              " ('bouzid', 81),\n",
+              " ('karti', 81),\n",
+              " ('fransa', 81),\n",
+              " ('raw3a', 81),\n",
+              " ('manech', 81),\n",
+              " ('najeh', 81),\n",
+              " ('tele', 81),\n",
+              " ('3andkom', 81),\n",
+              " ('vote', 81),\n",
+              " ('mois', 81),\n",
+              " ('virage', 81),\n",
+              " ('yousef', 81),\n",
+              " ('mche', 81),\n",
+              " ('cheb', 80),\n",
+              " ('nestana', 80),\n",
+              " ('lahram', 80),\n",
+              " ('sport', 80),\n",
+              " ('bjah', 80),\n",
+              " ('apres', 80),\n",
+              " ('brcha', 80),\n",
+              " ('normalement', 80),\n",
+              " ('mahma', 80),\n",
+              " ('3ayla', 80),\n",
+              " ('esmou', 80),\n",
+              " ('media', 80),\n",
+              " ('a3tina', 80),\n",
+              " ('thez', 80),\n",
+              " ('choix', 80),\n",
+              " ('edawla', 80),\n",
+              " ('wkol', 79),\n",
+              " ('ykoulou', 79),\n",
+              " ('ariere', 79),\n",
+              " ('sghar', 79),\n",
+              " ('maset', 79),\n",
+              " ('klab', 79),\n",
+              " ('grave', 79),\n",
+              " ...]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 34
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "cXmPhsafpwfe",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "3f802bb3-0a4f-488a-9956-64c736173ea0"
+      },
+      "source": [
+        "len(counter)"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "146106"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 35
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "UJcgPFfPpwfe"
+      },
+      "source": [
+        "num_unique_words = len(counter)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "96EGRtlvpwfe"
+      },
+      "source": [
+        "train_ds = train_ds.sample(frac=1).reset_index(drop=True)\n",
+        "cut = 60000\n",
+        "test_reviews = train_ds.text[cut:].to_numpy()\n",
+        "test_labels = train_ds.label[cut:].to_numpy()\n",
+        "train_reviews = train_ds.text[:cut].to_numpy()\n",
+        "train_labels = train_ds.label[:cut].to_numpy()"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "uIpEVODJpwfe",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "9613a028-6c24-4930-cb5e-800b9828e175"
+      },
+      "source": [
+        "train_reviews.shape, test_reviews.shape"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "((60000,), (10000,))"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 38
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "IeP1A7jKpwff"
+      },
+      "source": [
+        "trunc_type='post'\n",
+        "oov_tok = \"<OOV>\"\n",
+        "\n",
+        "from tensorflow.keras.preprocessing.text import Tokenizer\n",
+        "\n",
+        "tokenizer = Tokenizer(num_words=num_unique_words, oov_token=oov_tok)\n",
+        "tokenizer.fit_on_texts(train_reviews)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "CskIT0Rrpwfg"
+      },
+      "source": [
+        "word_index = tokenizer.word_index"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "fmZkxHCtpwfg"
+      },
+      "source": [
+        "train_sequences = tokenizer.texts_to_sequences(train_reviews)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "d4sCxV2Opwfg",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "16f41f5a-d50d-411b-b18c-a1d95dd0c7d3"
+      },
+      "source": [
+        "print(train_reviews[10:15])\n",
+        "print(train_sequences[10:15])"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "['patron m3adabhom rois'\n",
+            " 'tared 3lena lbenzarti wnehlna barcha amarek m3ak flkoumita jiblna entreneur kbir kima wyzina mlaflam mta3ak'\n",
+            " 'nice photoshop nahdha'\n",
+            " 'chika groupes hethi ynajim yaemel haja wakt jena maenech jouerete equipe ferga chaksitou kwia yaeref ywasel mesage jouerete'\n",
+            " 'winou']\n",
+            "[[78, 10460, 18261], [709, 8686, 5186, 30306, 10, 30307, 8, 30308, 10461, 927, 89, 35, 30309, 30310, 8687], [633, 6476, 383], [13261, 13262, 187, 3991, 30311, 26, 201, 2571, 30312, 3705, 258, 5759, 30313, 5187, 30314, 3706, 668, 3705], [485]]\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "3ndo7rg8pwfg",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "53618342-6b27-4254-9b17-d18ffc6284b1"
+      },
+      "source": [
+        "from tensorflow.keras.preprocessing.sequence import pad_sequences\n",
+        "\n",
+        "max_length = 30\n",
+        "\n",
+        "train_padded = pad_sequences(train_sequences, maxlen=max_length, padding=\"post\", truncating=\"post\")\n",
+        "\n",
+        "train_padded.shape"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "(60000, 30)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 43
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "_MTaps84pwfg",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "05a979b1-b27f-4924-80a6-0133c97b7e32"
+      },
+      "source": [
+        "model = keras.models.Sequential()\n",
+        "\n",
+        "model.add(layers.Embedding(num_unique_words, 64, input_length=max_length))\n",
+        "\n",
+        "model.add(layers.Bidirectional(layers.LSTM(64)))\n",
+        "\n",
+        "model.add(layers.Dense(64, activation=\"relu\"))\n",
+        "\n",
+        "model.add(layers.Dense(1,activation=\"sigmoid\"))\n",
+        "\n",
+        "model.summary()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Model: \"sequential\"\n",
+            "_________________________________________________________________\n",
+            "Layer (type)                 Output Shape              Param #   \n",
+            "=================================================================\n",
+            "embedding (Embedding)        (None, 30, 64)            9350784   \n",
+            "_________________________________________________________________\n",
+            "bidirectional (Bidirectional (None, 30, 128)           66048     \n",
+            "_________________________________________________________________\n",
+            "bidirectional_1 (Bidirection (None, 128)               98816     \n",
+            "_________________________________________________________________\n",
+            "dense (Dense)                (None, 64)                8256      \n",
+            "_________________________________________________________________\n",
+            "dense_1 (Dense)              (None, 1)                 65        \n",
+            "=================================================================\n",
+            "Total params: 9,523,969\n",
+            "Trainable params: 9,523,969\n",
+            "Non-trainable params: 0\n",
+            "_________________________________________________________________\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "mRcopGTVpwfh"
+      },
+      "source": [
+        "class myCallback(tf.keras.callbacks.Callback):\n",
+        "  def on_epoch_end(self, epoch, logs={}):\n",
+        "    if(logs.get('val_accuracy')>0.9):\n",
+        "      print(\"\\nReached 93% accuracy\")\n",
+        "      self.model.stop_training = True\n",
+        "callback = myCallback()"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "boEIJbkvpwfh"
+      },
+      "source": [
+        "loss = 'binary_crossentropy'\n",
+        "optimizer = 'adam'\n",
+        "metrics = [\"accuracy\"]\n",
+        "\n",
+        "model.compile(loss=loss, optimizer=optimizer, metrics=metrics)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "nlI2eOtHt53o"
+      },
+      "source": [
+        "def sample_data():\n",
+        "    test_sequences = tokenizer.texts_to_sequences(test_reviews)\n",
+        "    test_padded = pad_sequences(test_sequences, maxlen=max_length, padding=\"post\", truncating=\"post\")\n",
+        "    return test_padded, test_labels"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "scrolled": true,
+        "id": "3kFQoELdpwfh",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "bd6d23d5-efa6-4a2c-fe93-5c9c8ba569c1"
+      },
+      "source": [
+        "history = model.fit(train_padded,train_labels,epochs=3,validation_data=(sample_data()), callbacks=[callback])"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Epoch 1/20\n",
+            "1875/1875 [==============================] - 319s 167ms/step - loss: 0.4754 - accuracy: 0.7594 - val_loss: 0.3853 - val_accuracy: 0.8230\n",
+            "Epoch 2/20\n",
+            "1875/1875 [==============================] - 311s 166ms/step - loss: 0.1856 - accuracy: 0.9294 - val_loss: 0.4418 - val_accuracy: 0.8076\n",
+            "Epoch 3/20\n",
+            "1875/1875 [==============================] - 313s 167ms/step - loss: 0.0818 - accuracy: 0.9712 - val_loss: 0.5751 - val_accuracy: 0.8029\n",
+            "Epoch 4/20\n",
+            "1875/1875 [==============================] - 311s 166ms/step - loss: 0.0499 - accuracy: 0.9823 - val_loss: 0.6345 - val_accuracy: 0.7959\n",
+            "Epoch 5/20\n",
+            "1875/1875 [==============================] - 312s 166ms/step - loss: 0.0335 - accuracy: 0.9868 - val_loss: 0.9054 - val_accuracy: 0.7945\n",
+            "Epoch 6/20\n",
+            "1875/1875 [==============================] - 312s 166ms/step - loss: 0.0262 - accuracy: 0.9891 - val_loss: 0.9336 - val_accuracy: 0.7923\n",
+            "Epoch 7/20\n",
+            "1875/1875 [==============================] - 313s 167ms/step - loss: 0.0221 - accuracy: 0.9909 - val_loss: 0.9704 - val_accuracy: 0.7924\n",
+            "Epoch 8/20\n",
+            "1875/1875 [==============================] - 315s 168ms/step - loss: 0.0197 - accuracy: 0.9920 - val_loss: 1.0104 - val_accuracy: 0.7887\n",
+            "Epoch 9/20\n",
+            "1875/1875 [==============================] - 314s 167ms/step - loss: 0.0171 - accuracy: 0.9927 - val_loss: 0.9813 - val_accuracy: 0.7876\n",
+            "Epoch 10/20\n",
+            "1875/1875 [==============================] - 312s 167ms/step - loss: 0.0166 - accuracy: 0.9932 - val_loss: 1.1608 - val_accuracy: 0.7904\n",
+            "Epoch 11/20\n",
+            "1875/1875 [==============================] - 314s 167ms/step - loss: 0.0153 - accuracy: 0.9932 - val_loss: 1.4150 - val_accuracy: 0.7765\n",
+            "Epoch 12/20\n",
+            "1875/1875 [==============================] - 314s 167ms/step - loss: 0.0153 - accuracy: 0.9930 - val_loss: 1.0522 - val_accuracy: 0.7859\n",
+            "Epoch 13/20\n",
+            "1875/1875 [==============================] - 313s 167ms/step - loss: 0.0131 - accuracy: 0.9946 - val_loss: 1.2386 - val_accuracy: 0.7847\n",
+            "Epoch 14/20\n",
+            "1875/1875 [==============================] - 314s 167ms/step - loss: 0.0122 - accuracy: 0.9948 - val_loss: 1.1156 - val_accuracy: 0.7849\n",
+            "Epoch 15/20\n",
+            "1875/1875 [==============================] - 311s 166ms/step - loss: 0.0122 - accuracy: 0.9947 - val_loss: 1.3181 - val_accuracy: 0.7862\n",
+            "Epoch 16/20\n",
+            "1875/1875 [==============================] - 308s 164ms/step - loss: 0.0123 - accuracy: 0.9947 - val_loss: 1.1993 - val_accuracy: 0.7903\n",
+            "Epoch 17/20\n",
+            "1875/1875 [==============================] - 309s 165ms/step - loss: 0.0109 - accuracy: 0.9955 - val_loss: 1.2097 - val_accuracy: 0.7718\n",
+            "Epoch 18/20\n",
+            "1875/1875 [==============================] - 310s 166ms/step - loss: 0.0117 - accuracy: 0.9948 - val_loss: 1.3636 - val_accuracy: 0.7783\n",
+            "Epoch 19/20\n",
+            "1875/1875 [==============================] - 310s 165ms/step - loss: 0.0108 - accuracy: 0.9955 - val_loss: 1.6072 - val_accuracy: 0.7751\n",
+            "Epoch 20/20\n",
+            "1875/1875 [==============================] - 312s 166ms/step - loss: 0.0108 - accuracy: 0.9954 - val_loss: 1.2990 - val_accuracy: 0.7793\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 541
+        },
+        "id": "96jcbcKX1Axx",
+        "outputId": "2b47cbd6-ed34-427d-a3aa-85f3b01679c7"
+      },
+      "source": [
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "\n",
+        "def plot_graphs(history, string):\n",
+        "  plt.plot(history.history[string])\n",
+        "  plt.plot(history.history['val_'+string])\n",
+        "  plt.xlabel(\"Epochs\")\n",
+        "  plt.ylabel(string)\n",
+        "  plt.legend([string, 'val_'+string])\n",
+        "  plt.show()\n",
+        "  \n",
+        "plot_graphs(history, \"accuracy\")\n",
+        "plot_graphs(history, \"loss\")"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "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\n",
+            "text/plain": [
+              "<Figure size 432x288 with 1 Axes>"
+            ]
+          },
+          "metadata": {
+            "tags": [],
+            "needs_background": "light"
+          }
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "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\n",
+            "text/plain": [
+              "<Figure size 432x288 with 1 Axes>"
+            ]
+          },
+          "metadata": {
+            "tags": [],
+            "needs_background": "light"
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "poRLXCEoTeiT"
+      },
+      "source": [
+        "def preprocess(text):\n",
+        "    text = remove_url(text)\n",
+        "    text = remove_punct(text)\n",
+        "    text = remove_stopwords(text)\n",
+        "    text = remove_useless(text)\n",
+        "    text = lemmatize_text(text)\n",
+        "    text = negate_words(text)\n",
+        "    sequences = tokenizer.texts_to_sequences([text])\n",
+        "    padded = pad_sequences(sequences, maxlen=max_length, padding=\"post\", truncating=\"post\")\n",
+        "    return padded"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "G_AXHAvWpwfi"
+      },
+      "source": [
+        "def predict(padded):\n",
+        "    predictions = [1 if p> 0.4 else -1 for p in model.predict(padded)]\n",
+        "    return predictions"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "YOlAhBvFvz8v"
+      },
+      "source": [
+        "def preprocess_many(texts):\n",
+        "    for text in texts:\n",
+        "        i = texts.index(text)\n",
+        "        text = lower_text(text)\n",
+        "        text = remove_emails(text)\n",
+        "        text = remove_urls(text)\n",
+        "        text = remove_rt(text)\n",
+        "        text = remove_special_chars(text)\n",
+        "        text = remove_accented_chars(text)\n",
+        "        text = reshape_words(text)\n",
+        "        text = regroup_words(text)\n",
+        "        text = remove_special(text)\n",
+        "        text = remove_stopwords(text)\n",
+        "        text = remove_useless(text)\n",
+        "        texts[i] = text\n",
+        "    sequences = tokenizer.texts_to_sequences(texts)\n",
+        "    padded = pad_sequences(sequences, maxlen=max_length, padding=\"post\", truncating=\"post\")\n",
+        "    return padded"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "XjScCCIXpwfi"
+      },
+      "source": [
+        "texts = list(test_ds.text[:])\n",
+        "preprocessed = preprocess_many(texts)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "mFHxK4wCI-31"
+      },
+      "source": [
+        "predictions = predict(preprocessed)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "FPLsM4e80txR",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "0920f398-0869-4d3c-9555-dac68f5c0e2d"
+      },
+      "source": [
+        "test_ds.shape"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "(30000, 2)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 47
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "_pO4qoChpwfi",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "9f2113dc-d848-43bd-8250-425bd22824dd"
+      },
+      "source": [
+        "print(texts[3505:3510])\n",
+        "print(predictions[3505:3510])"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "['maneha thebou tkoulou edhoukom khir lotfi ebdeli zayed chab mounefak', 'nik omek slim ryehi allah yahrak weldik khamej latbereklek khrebt club', 'rabi elahena behweyjina moch bilebachar machakelha andi mankolek', 'theb tamel lkhir emchi ahya lfakira mouch alina facebok malem', 'khsara tmanit nkoun nachit fara fousana wileyt kaserine wmajmoua kbira andha thika kbira mastajabtouch lina nitak jihawi nitak watani baid aladid mina albarkiyet']\n",
+            "[-1, -1, 1, 1, -1]\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "qmFf-9Y4pwfj"
+      },
+      "source": [
+        "submission = pd.DataFrame({\"ID\": test_ds[\"ID\"], \"label\": predictions})"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "cuUoaLDIwl3P",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 195
+        },
+        "outputId": "01d88ad0-33c8-408b-ae03-5aedd1b72ac1"
+      },
+      "source": [
+        "submission.head()"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>ID</th>\n",
+              "      <th>label</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>2DDHQW9</td>\n",
+              "      <td>1</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>5HY6UEY</td>\n",
+              "      <td>-1</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>ATNVUJX</td>\n",
+              "      <td>1</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>Q9XYVOQ</td>\n",
+              "      <td>-1</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>TOAHLRH</td>\n",
+              "      <td>1</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "        ID  label\n",
+              "0  2DDHQW9      1\n",
+              "1  5HY6UEY     -1\n",
+              "2  ATNVUJX      1\n",
+              "3  Q9XYVOQ     -1\n",
+              "4  TOAHLRH      1"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 92
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "0yfKj8-GyYPM"
+      },
+      "source": [
+        "submission.to_csv('34.csv', index = False)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "jpPwqZQdIl53"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
